@@ -1,0 +1,39 @@
+x-pg: &pg
+  image: postgres:18-alpine
+  environment:
+    POSTGRES_USER: app
+    POSTGRES_PASSWORD: app
+    POSTGRES_DB: comments
+  healthcheck:
+    test: ["CMD", "pg_isready", "-U", "app", "-d", "comments"]
+    interval: 2s
+    retries: 20
+
+services:
+  pg:
+    <<: *pg
+    volumes:
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+  redis:
+    image: redis:7.4-alpine
+
+  legacy:
+    build: ./legacy
+    environment:
+      DATABASE_URL: postgresql+psycopg://app:app@pg:5432/comments
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      pg: { condition: service_healthy }
+      redis: { condition: service_started }
+    ports: ["8080:8000"]
+    deploy:
+      resources:
+        limits: { cpus: "2", memory: 512M }
+
+  consumer:
+    build: ./consumer
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      CONSUMER_NAME: consumer-prod
+    depends_on: [redis]
