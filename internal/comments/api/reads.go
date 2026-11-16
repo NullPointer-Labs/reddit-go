@@ -32,6 +32,13 @@ func (s *Server) serveRead(w http.ResponseWriter, r *http.Request, load func() (
 	s.stats.ReadsCompared.Add(1)
 	diffs := readDiff(legStatus, legBody, status, mine)
 	if len(diffs) > 0 {
+		status, mine = render(load())
+		if len(readDiff(legStatus, legBody, status, mine)) == 0 {
+			s.stats.ReadRaces.Add(1)
+			diffs = nil
+		}
+	}
+	if len(diffs) > 0 {
 		s.stats.ReadMismatches.Add(1)
 		compare.LogMismatch("read", r.Method+" "+r.URL.Path, diffs)
 	}

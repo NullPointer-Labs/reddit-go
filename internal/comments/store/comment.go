@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -17,9 +18,22 @@ type Comment struct {
 	Body      string    `json:"body"`
 	Score     int       `json:"score"`
 	Version   int       `json:"version"`
-	Edited    bool      `json:"edited,omitempty"`
+	Edited    bool      `json:"edited"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func pyTime(t time.Time) string {
+	return t.UTC().Format("2006-01-02T15:04:05.000000-07:00")
+}
+
+func (c Comment) MarshalJSON() ([]byte, error) {
+	type alias Comment
+	return json.Marshal(struct {
+		alias
+		CreatedAt string `json:"created_at"`
+		UpdatedAt string `json:"updated_at"`
+	}{alias(c), pyTime(c.CreatedAt), pyTime(c.UpdatedAt)})
 }
 
 type Store struct {

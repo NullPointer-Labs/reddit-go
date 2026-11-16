@@ -12,12 +12,14 @@ import (
 type Stats struct {
 	ReadsCompared  atomic.Int64 `json:"-"`
 	ReadMismatches atomic.Int64 `json:"-"`
+	ReadRaces      atomic.Int64 `json:"-"`
 }
 
 func (s *Stats) Snapshot() map[string]int64 {
 	return map[string]int64{
 		"reads_compared":  s.ReadsCompared.Load(),
 		"read_mismatches": s.ReadMismatches.Load(),
+		"read_races":      s.ReadRaces.Load(),
 	}
 }
 
