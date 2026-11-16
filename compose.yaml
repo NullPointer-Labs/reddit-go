@@ -26,10 +26,32 @@ services:
     depends_on:
       pg: { condition: service_healthy }
       redis: { condition: service_started }
-    ports: ["8080:8000"]
     deploy:
       resources:
         limits: { cpus: "2", memory: 512M }
+
+  comments-go:
+    build: { context: ., dockerfile: build/comments.Dockerfile }
+    environment:
+      LEGACY_URL: http://legacy:8000
+      DATABASE_URL: postgres://app:app@pg:5432/comments?pool_max_conns=20
+      REDIS_URL: redis://redis:6379/0
+    ports: ["8081:8081"]
+    depends_on:
+      pg: { condition: service_healthy }
+      legacy: { condition: service_started }
+    deploy:
+      resources:
+        limits: { cpus: "2", memory: 512M }
+
+  router:
+    build: { context: ., dockerfile: build/router.Dockerfile }
+    environment:
+      LEGACY_URL: http://legacy:8000
+      GO_URL: http://comments-go:8081
+      GO_PERCENT: "0"
+    ports: ["8080:8080"]
+    depends_on: [legacy, comments-go]
 
   consumer:
     build: ./consumer
