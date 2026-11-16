@@ -18,6 +18,14 @@ services:
   redis:
     image: redis:7.4-alpine
 
+  pg-sister:
+    <<: *pg
+    volumes:
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+  redis-sister:
+    image: redis:7.4-alpine
+
   legacy:
     build: ./legacy
     environment:
@@ -36,9 +44,12 @@ services:
       LEGACY_URL: http://legacy:8000
       DATABASE_URL: postgres://app:app@pg:5432/comments?pool_max_conns=20
       REDIS_URL: redis://redis:6379/0
+      SISTER_DATABASE_URL: postgres://app:app@pg-sister:5432/comments?pool_max_conns=20
+      SISTER_REDIS_URL: redis://redis-sister:6379/0
     ports: ["8081:8081"]
     depends_on:
       pg: { condition: service_healthy }
+      pg-sister: { condition: service_healthy }
       legacy: { condition: service_started }
     deploy:
       resources:
@@ -59,3 +70,9 @@ services:
       REDIS_URL: redis://redis:6379/0
       CONSUMER_NAME: consumer-prod
     depends_on: [redis]
+  consumer-sister:
+    build: ./consumer
+    environment:
+      REDIS_URL: redis://redis-sister:6379/0
+      CONSUMER_NAME: consumer-sister
+    depends_on: [redis-sister]

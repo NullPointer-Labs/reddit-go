@@ -15,11 +15,13 @@ import (
 
 type Config struct {
 	Prod   *store.Store
+	Sister *store.Store
 	Legacy string
 }
 
 type Server struct {
 	prod   *store.Store
+	sister *store.Store
 	legacy string
 	client *http.Client
 	stats  compare.Stats
@@ -28,6 +30,7 @@ type Server struct {
 func New(cfg Config) *Server {
 	s := &Server{
 		prod:   cfg.Prod,
+		sister: cfg.Sister,
 		legacy: cfg.Legacy,
 		client: &http.Client{Timeout: 10 * time.Second},
 	}
@@ -38,6 +41,9 @@ func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /comments/{id}", s.getComment)
 	mux.HandleFunc("GET /posts/{id}/comments", s.listComments)
+	mux.HandleFunc("POST /comments", s.createComment)
+	mux.HandleFunc("PATCH /comments/{id}", s.updateComment)
+	mux.HandleFunc("POST /comments/{id}/vote", s.vote)
 	mux.HandleFunc("GET /admin/stats", s.adminStats)
 	mux.HandleFunc("/", s.passthrough)
 	return mux
