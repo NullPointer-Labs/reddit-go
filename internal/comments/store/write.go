@@ -52,7 +52,7 @@ func (s *Store) Create(ctx context.Context, in CreateInput, forcedID int64) (Com
 	if err != nil {
 		return c, err
 	}
-	return c, s.publish(ctx, "comment.created", c)
+	return c, s.publish(ctx, "comment_created", c)
 }
 
 func (s *Store) Update(ctx context.Context, id int64, body string) (Comment, error) {
@@ -66,7 +66,7 @@ func (s *Store) Update(ctx context.Context, id int64, body string) (Comment, err
 	if err != nil {
 		return c, err
 	}
-	return c, s.publish(ctx, "comment.updated", c)
+	return c, s.publish(ctx, "comment_updated", c)
 }
 
 func (s *Store) Vote(ctx context.Context, id int64, delta int) (Comment, error) {
@@ -79,7 +79,7 @@ func (s *Store) Vote(ctx context.Context, id int64, delta int) (Comment, error) 
 	if err != nil {
 		return c, err
 	}
-	return c, s.publish(ctx, "comment.voted", c)
+	return c, s.publish(ctx, "comment_voted", c)
 }
 
 func (s *Store) Seed(ctx context.Context, c Comment) error {
