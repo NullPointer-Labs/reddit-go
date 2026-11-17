@@ -15,6 +15,7 @@ type Stats struct {
 	ReadRaces       atomic.Int64 `json:"-"`
 	WritesCompared  atomic.Int64 `json:"-"`
 	WriteMismatches atomic.Int64 `json:"-"`
+	WriteRaces      atomic.Int64 `json:"-"`
 }
 
 func (s *Stats) Snapshot() map[string]int64 {
@@ -24,6 +25,7 @@ func (s *Stats) Snapshot() map[string]int64 {
 		"read_races":       s.ReadRaces.Load(),
 		"writes_compared":  s.WritesCompared.Load(),
 		"write_mismatches": s.WriteMismatches.Load(),
+		"write_races":      s.WriteRaces.Load(),
 	}
 }
 

@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+var writeIgnore = map[string]bool{"created_at": true, "updated_at": true}
+
 func (s *Server) createComment(w http.ResponseWriter, r *http.Request) {
 	reqBody, _ := io.ReadAll(r.Body)
 	var in store.CreateInput
@@ -28,7 +30,7 @@ func (s *Server) createComment(w http.ResponseWriter, r *http.Request) {
 	if legStatus == http.StatusCreated {
 		_ = json.Unmarshal(legBody, &prodC)
 	}
-	go s.shadowWrite("POST /comments", legStatus, func(ctx context.Context) (store.Comment, error) {
+	go s.shadowWrite("POST /comments", legStatus, legBody, 0, func(ctx context.Context) (store.Comment, error) {
 		return s.sister.Create(ctx, in, prodC.ID)
 	}, prodC.ID)
 }
@@ -74,8 +76,11 @@ func (s *Server) mutate(w http.ResponseWriter, r *http.Request, id int64, reqBod
 		return
 	}
 	writeRaw(w, legStatus, legBody)
-
-	go s.shadowWrite(r.Method+" "+r.URL.Path, legStatus, func(ctx context.Context) (store.Comment, error) {
+	expected := 0
+	if beforeErr == nil {
+		expected = before.Version + 1
+	}
+	go s.shadowWrite(r.Method+" "+r.URL.Path, legStatus, legBody, expected, func(ctx context.Context) (store.Comment, error) {
 		if beforeErr == nil {
 			if err := s.sister.Seed(ctx, before); err != nil {
 				return store.Comment{}, err
@@ -85,7 +90,7 @@ func (s *Server) mutate(w http.ResponseWriter, r *http.Request, id int64, reqBod
 	}, id)
 }
 
-func (s *Server) shadowWrite(route string, legStatus int,
+func (s *Server) shadowWrite(route string, legStatus int, legBody []byte, expectedVersion int,
 	apply func(context.Context) (store.Comment, error), id int64) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -109,9 +114,16 @@ func (s *Server) shadowWrite(route string, legStatus int,
 		return
 	}
 
+	var legC store.Comment
+	_ = json.Unmarshal(legBody, &legC)
+	if expectedVersion != 0 && (legC.Version != expectedVersion || prodNow.Version != legC.Version) {
+		s.stats.WriteRaces.Add(1)
+		return
+	}
+
 	prodJSON, _ := json.Marshal(prodNow)
 	sisterJSON, _ := json.Marshal(mine)
-	if diffs := compare.Diff(prodJSON, sisterJSON, nil); len(diffs) > 0 {
+	if diffs := compare.Diff(prodJSON, sisterJSON, writeIgnore); len(diffs) > 0 {
 		s.stats.WriteMismatches.Add(1)
 		compare.LogMismatch("write", route, diffs)
 	}
