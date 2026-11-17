@@ -19,6 +19,16 @@ func (s *Server) createComment(w http.ResponseWriter, r *http.Request) {
 	var in store.CreateInput
 	_ = json.Unmarshal(reqBody, &in)
 
+	if s.primary.Load() {
+		c, err := s.prod.Create(r.Context(), in, 0)
+		status, out := render(c, err)
+		if err == nil {
+			status = http.StatusCreated
+		}
+		writeRaw(w, status, out)
+		return
+	}
+
 	legStatus, legBody, err := s.forward(r, reqBody)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "legacy unavailable"})
@@ -67,6 +77,13 @@ func (s *Server) vote(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) mutate(w http.ResponseWriter, r *http.Request, id int64, reqBody []byte,
 	apply func(context.Context, *store.Store) (store.Comment, error)) {
+
+	if s.primary.Load() {
+		c, err := apply(r.Context(), s.prod)
+		status, out := render(c, err)
+		writeRaw(w, status, out)
+		return
+	}
 
 	before, beforeErr := s.prod.Get(r.Context(), id)
 

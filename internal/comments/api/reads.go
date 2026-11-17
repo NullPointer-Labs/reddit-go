@@ -24,6 +24,10 @@ func (s *Server) listComments(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) serveRead(w http.ResponseWriter, r *http.Request, load func() (any, error)) {
 	status, mine := render(load())
+	if s.primary.Load() {
+		writeRaw(w, status, mine)
+		return
+	}
 	legStatus, legBody, ferr := s.forward(r, nil)
 	if ferr != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "legacy unavailable"})

@@ -10,21 +10,24 @@ import (
 	"reddit-lab/internal/comments/compare"
 	"reddit-lab/internal/comments/store"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
 
 type Config struct {
-	Prod   *store.Store
-	Sister *store.Store
-	Legacy string
+	Prod    *store.Store
+	Sister  *store.Store
+	Legacy  string
+	Primary bool
 }
 
 type Server struct {
-	prod   *store.Store
-	sister *store.Store
-	legacy string
-	client *http.Client
-	stats  compare.Stats
+	prod    *store.Store
+	sister  *store.Store
+	legacy  string
+	client  *http.Client
+	primary atomic.Bool
+	stats   compare.Stats
 }
 
 func New(cfg Config) *Server {
@@ -34,6 +37,7 @@ func New(cfg Config) *Server {
 		legacy: cfg.Legacy,
 		client: &http.Client{Timeout: 10 * time.Second},
 	}
+	s.primary.Store(cfg.Primary)
 	return s
 }
 
@@ -45,6 +49,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("PATCH /comments/{id}", s.updateComment)
 	mux.HandleFunc("POST /comments/{id}/vote", s.vote)
 	mux.HandleFunc("GET /admin/stats", s.adminStats)
+	mux.HandleFunc("POST /admin/mode", s.adminMode)
 	mux.HandleFunc("/", s.passthrough)
 	return mux
 }

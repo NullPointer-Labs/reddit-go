@@ -13,14 +13,16 @@ func main() {
 	ctx := context.Background()
 	prod := mustOpen(ctx, os.Getenv("DATABASE_URL"), os.Getenv("REDIS_URL"))
 	sister := mustOpen(ctx, os.Getenv("SISTER_DATABASE_URL"), os.Getenv("SISTER_REDIS_URL"))
+	primary := os.Getenv("MODE") == "primary"
 
 	srv := api.New(api.Config{
-		Prod:   prod,
-		Sister: sister,
-		Legacy: os.Getenv("LEGACY_URL"),
+		Prod:    prod,
+		Sister:  sister,
+		Legacy:  os.Getenv("LEGACY_URL"),
+		Primary: primary,
 	})
 
-	log.Printf("comments listening on :8081")
+	log.Printf("comments listening on :8081 (primary=%v)", primary)
 	log.Fatal(http.ListenAndServe(":8081", srv.Routes()))
 }
 

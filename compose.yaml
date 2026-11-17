@@ -41,6 +41,7 @@ services:
   comments-go:
     build: { context: ., dockerfile: build/comments.Dockerfile }
     environment:
+      MODE: shadow
       LEGACY_URL: http://legacy:8000
       DATABASE_URL: postgres://app:app@pg:5432/comments?pool_max_conns=20
       REDIS_URL: redis://redis:6379/0
